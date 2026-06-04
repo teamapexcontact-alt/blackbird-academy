@@ -8,6 +8,7 @@ import {
   Users,
   CreditCard,
   FileText,
+  Tag,
   LogOut,
 } from "lucide-react";
 
@@ -16,6 +17,7 @@ const links = [
   { href: "/admin/dashboard/leads", label: "Leads", icon: Users },
   { href: "/admin/dashboard/enrollments", label: "Enrollments", icon: CreditCard },
   { href: "/admin/dashboard/content", label: "Content", icon: FileText },
+  { href: "/admin/dashboard/coupons", label: "Coupons", icon: Tag },
 ];
 
 export function Sidebar() {

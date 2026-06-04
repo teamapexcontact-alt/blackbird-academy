@@ -5,7 +5,7 @@ export async function POST() {
   try {
     const timestamp = Math.round(Date.now() / 1000);
     const signature = cloudinaryV2.utils.api_sign_request(
-      { timestamp, folder: "blackbird/reels", upload_preset: "blackbird_reels" },
+      { timestamp, folder: "blackbird/reels" },
       process.env.CLOUDINARY_API_SECRET!
     );
 
@@ -15,7 +15,6 @@ export async function POST() {
       cloudName: process.env.CLOUDINARY_CLOUD_NAME,
       apiKey: process.env.CLOUDINARY_API_KEY,
       folder: "blackbird/reels",
-      uploadPreset: "blackbird_reels",
     });
   } catch (error) {
     console.error("Sign error:", error);

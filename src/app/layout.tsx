@@ -17,7 +17,7 @@ const spaceGrotesk = Space_Grotesk({
 const syne = Syne({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["600", "700", "800"],
+  weight: ["500", "600", "700", "800"],
   display: "swap",
 });
 

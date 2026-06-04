@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
-import { getFirestore } from "firebase-admin/firestore";
+import { firestore } from "@/lib/firebase";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
-
-    const db = getFirestore();
-    let query: FirebaseFirestore.Query = db.collection("enrollments");
+    let query: FirebaseFirestore.Query = firestore.collection("enrollments");
 
     if (status) {
       query = query.where("status", "==", status);
@@ -19,7 +17,7 @@ export async function GET(request: Request) {
     const leadsMap: Record<string, any> = {};
 
     if (leadIds.length > 0) {
-      const leadsSnapshot = await db
+      const leadsSnapshot = await firestore
         .collection("leads")
         .where("__name__", "in", leadIds)
         .get();

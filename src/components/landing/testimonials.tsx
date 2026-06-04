@@ -42,7 +42,7 @@ export function Testimonials() {
             >
               <div className="flex items-center gap-1 mb-3">
                 {Array.from({ length: testimonial.rating }).map((_, i) => (
-                  <Star key={i} className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
+                  <Star key={i} className="w-3.5 h-3.5 fill-accent text-accent" />
                 ))}
               </div>
               <Quote className="w-5 h-5 text-accent/40 mb-3" />

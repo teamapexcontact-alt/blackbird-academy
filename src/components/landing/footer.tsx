@@ -7,8 +7,8 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2.5">
             <img src="/images/logo.png" alt="BlackBird Academy" className="h-7 w-7" />
-            <span className="display-heading text-sm">
-              Black<span className="serif-accent text-accent">Bird</span>
+            <span className="display-heading text-sm text-white">
+              BlackBird
               <span className="block text-[10px] font-label uppercase tracking-[0.2em] text-muted-text mt-0.5">
                 Academy © {new Date().getFullYear()}
               </span>

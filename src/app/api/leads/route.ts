@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
-import { razorpay } from "@/lib/razorpay";
-import { getFirestore } from "firebase-admin/firestore";
+import { firestore } from "@/lib/firebase";
 import { Timestamp } from "firebase-admin/firestore";
-
-const COURSE_PRICE = 999;
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, phone, instagram, experience } = body;
+    const { name, email, phone, instagram, experience, couponCode, discountAmount } = body;
 
     if (!name || !email || !phone || !instagram || !experience) {
       return NextResponse.json(
@@ -17,21 +14,80 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = getFirestore();
-    const leadsRef = db.collection("leads");
+    if (couponCode) {
+      const upperCode = couponCode.toUpperCase();
+      const couponSnapshot = await firestore
+        .collection("coupons")
+        .where("code", "==", upperCode)
+        .limit(1)
+        .get();
+
+      if (couponSnapshot.empty) {
+        return NextResponse.json(
+          { error: "Invalid coupon code" },
+          { status: 400 }
+        );
+      }
+
+      const couponDoc = couponSnapshot.docs[0];
+      const coupon = couponDoc.data();
+
+      if (!coupon.isActive) {
+        return NextResponse.json(
+          { error: "This coupon is no longer active" },
+          { status: 400 }
+        );
+      }
+
+      if (coupon.expiryDate?.toDate?.() < new Date()) {
+        return NextResponse.json(
+          { error: "This coupon has expired" },
+          { status: 400 }
+        );
+      }
+
+      if (coupon.currentUses >= coupon.maxUses) {
+        return NextResponse.json(
+          { error: "This coupon has reached its usage limit" },
+          { status: 400 }
+        );
+      }
+
+      if (coupon.discountType === "fixed") {
+        const expectedDiscount = Math.min(coupon.discount, 999);
+        if (Number(discountAmount) !== expectedDiscount) {
+          return NextResponse.json(
+            { error: "Coupon validation failed" },
+            { status: 400 }
+          );
+        }
+      } else if (coupon.discountType === "percentage") {
+        const expectedDiscount = Math.round((999 * coupon.discount) / 100);
+        if (Number(discountAmount) !== expectedDiscount) {
+          return NextResponse.json(
+            { error: "Coupon validation failed" },
+            { status: 400 }
+          );
+        }
+      }
+
+      await couponDoc.ref.update({
+        currentUses: coupon.currentUses + 1,
+      });
+    }
+
+    const leadsRef = firestore.collection("leads");
     const existingSnapshot = await leadsRef
       .where("email", "==", email)
       .limit(1)
       .get();
 
     let leadId: string;
-    let leadEmail: string;
 
     if (!existingSnapshot.empty) {
       const existingDoc = existingSnapshot.docs[0];
-      const existingData = existingDoc.data();
 
-      const enrollmentsRef = db.collection("enrollments");
+      const enrollmentsRef = firestore.collection("enrollments");
       const enrollmentSnapshot = await enrollmentsRef
         .where("leadId", "==", existingDoc.id)
         .where("status", "==", "COMPLETED")
@@ -50,12 +106,11 @@ export async function POST(request: Request) {
         phone,
         instagram,
         experience,
-        status: "NEW",
+        status: "REGISTERED",
         updatedAt: Timestamp.now(),
       });
 
       leadId = existingDoc.id;
-      leadEmail = existingData.email;
     } else {
       const docRef = await leadsRef.add({
         name,
@@ -63,57 +118,40 @@ export async function POST(request: Request) {
         phone,
         instagram,
         experience,
-        status: "NEW",
+        status: "REGISTERED",
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
       leadId = docRef.id;
-      leadEmail = email;
     }
 
-    const order = await razorpay.orders.create({
-      amount: COURSE_PRICE * 100,
-      currency: "INR",
-      receipt: `lead_${leadId}`,
-      notes: {
-        leadId,
-        email: leadEmail,
-      },
-    });
-
-    const enrollmentsRef = db.collection("enrollments");
+    const enrollmentsRef = firestore.collection("enrollments");
     const existingEnrollmentSnapshot = await enrollmentsRef
       .where("leadId", "==", leadId)
       .limit(1)
       .get();
 
+    const enrollmentData: Record<string, any> = {
+      status: "REGISTERED",
+      updatedAt: Timestamp.now(),
+    };
+
+    if (couponCode) {
+      enrollmentData.couponCode = couponCode.toUpperCase();
+      enrollmentData.discountAmount = Number(discountAmount) || 0;
+    }
+
     if (!existingEnrollmentSnapshot.empty) {
-      await existingEnrollmentSnapshot.docs[0].ref.update({
-        orderId: order.id,
-        amount: COURSE_PRICE * 100,
-        status: "PENDING",
-        updatedAt: Timestamp.now(),
-      });
+      await existingEnrollmentSnapshot.docs[0].ref.update(enrollmentData);
     } else {
       await enrollmentsRef.add({
         leadId,
-        orderId: order.id,
-        amount: COURSE_PRICE * 100,
-        currency: "INR",
-        status: "PENDING",
+        ...enrollmentData,
         createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
       });
     }
 
-    return NextResponse.json({
-      success: true,
-      order: {
-        id: order.id,
-        amount: order.amount,
-        currency: order.currency,
-      },
-    });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Lead creation error:", error);
     return NextResponse.json(
@@ -129,8 +167,7 @@ export async function GET(request: Request) {
     const status = searchParams.get("status");
     const search = searchParams.get("search");
 
-    const db = getFirestore();
-    let query: FirebaseFirestore.Query = db.collection("leads");
+    let query: FirebaseFirestore.Query = firestore.collection("leads");
 
     if (status) {
       query = query.where("status", "==", status);
@@ -157,7 +194,7 @@ export async function GET(request: Request) {
     const enrollmentsMap: Record<string, any> = {};
 
     if (leadIds.length > 0) {
-      const enrollmentsSnapshot = await db
+      const enrollmentsSnapshot = await firestore
         .collection("enrollments")
         .where("leadId", "in", leadIds)
         .get();

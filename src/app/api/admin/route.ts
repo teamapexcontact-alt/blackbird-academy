@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { firestore } from "@/lib/firebase";
 
 export async function GET() {
   try {
@@ -9,11 +9,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const db = getFirestore();
-
     const [leadsSnapshot, enrollmentsSnapshot] = await Promise.all([
-      db.collection("leads").get(),
-      db.collection("enrollments").get(),
+      firestore.collection("leads").get(),
+      firestore.collection("enrollments").get(),
     ]);
 
     const totalLeads = leadsSnapshot.size;
@@ -27,7 +25,7 @@ export async function GET() {
       .filter((e) => e.status === "COMPLETED")
       .reduce((sum, e) => sum + (e.amount || 0), 0);
 
-    const recentLeadsQuery = await db
+    const recentLeadsQuery = await firestore
       .collection("leads")
       .orderBy("createdAt", "desc")
       .limit(5)
@@ -39,7 +37,7 @@ export async function GET() {
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString(),
     }));
 
-    const recentEnrollmentsQuery = await db
+    const recentEnrollmentsQuery = await firestore
       .collection("enrollments")
       .orderBy("createdAt", "desc")
       .limit(5)
@@ -51,7 +49,7 @@ export async function GET() {
     const leadsMap: Record<string, any> = {};
 
     if (recentEnrollmentLeadIds.length > 0) {
-      const leadsSnapshot = await db
+      const leadsSnapshot = await firestore
         .collection("leads")
         .where("__name__", "in", recentEnrollmentLeadIds)
         .get();

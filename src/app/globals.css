@@ -1,14 +1,15 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #080808;
-  --color-secondary-bg: #111111;
-  --color-accent: #D4783D;
-  --color-accent-hover: #C0692E;
-  --color-accent-warm: #E0844A;
-  --color-primary-text: #F5F5F5;
-  --color-muted-text: #A0A0A0;
-  --color-border: #242424;
+  --color-background: #000000;
+  --color-secondary-bg: #0A0A0A;
+  --color-accent: #F59E0B;
+  --color-accent-hover: #D97706;
+  --color-accent-warm: #FBBF24;
+  --color-accent-glow: #B45309;
+  --color-primary-text: #FAFAFA;
+  --color-muted-text: #888888;
+  --color-border: #1A1A1A;
   --color-success: #22C55E;
   --color-warning: #F59E0B;
   --font-sans: var(--font-body);
@@ -41,8 +42,8 @@
     letter-spacing: -0.02em;
   }
   ::selection {
-    background: rgba(212, 120, 61, 0.3);
-    color: #F5F5F5;
+    background: rgba(245, 158, 11, 0.3);
+    color: #FAFAFA;
   }
 }
 
@@ -61,14 +62,14 @@
 }
 
 @utility glass {
-  background: rgba(17, 17, 17, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(10, 10, 10, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--color-border);
 }
 
 @utility gradient-text {
-  background: linear-gradient(135deg, #D4783D 0%, #E0844A 100%);
+  background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -82,7 +83,7 @@
     inset: 0;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(135deg, #D4783D, #E0844A);
+    background: linear-gradient(135deg, #F59E0B, #FBBF24);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -101,7 +102,7 @@
 
 @utility display-heading {
   font-family: var(--font-display);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
 }
@@ -130,7 +131,7 @@
 @utility spotlight-cursor {
   background: radial-gradient(
     600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    rgba(212, 120, 61, 0.08),
+    rgba(245, 158, 11, 0.08),
     transparent 50%
   );
 }
@@ -155,6 +156,27 @@
   }
 }
 
+@utility ambient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+@utility grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+@utility noise-bg {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+  opacity: 0.025;
+}
+
 @keyframes scroll {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
@@ -174,8 +196,8 @@
 }
 
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(212, 120, 61, 0.15); }
-  50% { box-shadow: 0 0 40px rgba(212, 120, 61, 0.25); }
+  0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.2); }
+  50% { box-shadow: 0 0 40px rgba(245, 158, 11, 0.35); }
 }
 
 @utility animate-pulse-glow {
@@ -202,7 +224,7 @@
 
 @keyframes border-glow {
   0%, 100% { border-color: var(--color-border); }
-  50% { border-color: rgba(212, 120, 61, 0.3); }
+  50% { border-color: rgba(245, 158, 11, 0.3); }
 }
 
 @utility animate-border-glow {
@@ -224,9 +246,19 @@
 }
 
 @utility animate-shimmer {
-  background: linear-gradient(90deg, transparent, rgba(212, 120, 61, 0.1), transparent);
+  background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.1), transparent);
   background-size: 200% 100%;
   animation: shimmer 3s infinite;
+}
+
+@keyframes orb-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.1); }
+  66% { transform: translate(-20px, 30px) scale(0.95); }
+}
+
+@utility animate-orb-drift {
+  animation: orb-drift 12s ease-in-out infinite;
 }
 
 ::-webkit-scrollbar {
@@ -235,14 +267,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #080808;
+  background: #000000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #242424;
+  background: #1A1A1A;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #D4783D;
+  background: #F59E0B;
 }

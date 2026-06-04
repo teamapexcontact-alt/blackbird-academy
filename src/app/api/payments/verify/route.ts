@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { firestore } from "@/lib/firebase";
+import { Timestamp } from "firebase-admin/firestore";
 
 export async function POST(request: Request) {
   try {
@@ -20,8 +21,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = getFirestore();
-    const enrollmentsRef = db.collection("enrollments");
+    const enrollmentsRef = firestore.collection("enrollments");
     const enrollmentSnapshot = await enrollmentsRef
       .where("orderId", "==", razorpay_order_id)
       .limit(1)
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       updatedAt: Timestamp.now(),
     });
 
-    await db.collection("leads").doc(enrollmentData.leadId).update({
+    await firestore.collection("leads").doc(enrollmentData.leadId).update({
       status: "ENROLLED",
       updatedAt: Timestamp.now(),
     });

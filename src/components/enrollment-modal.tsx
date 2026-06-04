@@ -27,6 +27,7 @@ interface EnrollmentModalProps {
 
 export function EnrollmentModal({ open, onOpenChange }: EnrollmentModalProps) {
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -34,9 +35,49 @@ export function EnrollmentModal({ open, onOpenChange }: EnrollmentModalProps) {
     instagram: "",
     experience: "",
   });
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discount: number;
+    discountedPrice: number;
+  } | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  const DEFAULT_PRICE = 999;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    setCouponError("");
+    setAppliedCoupon(null);
+
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: couponCode }),
+      });
+      const data = await res.json();
+
+      if (data.valid) {
+        setAppliedCoupon({
+          code: data.code,
+          discount: data.discount,
+          discountedPrice: data.discountedPrice,
+        });
+      } else {
+        setCouponError(data.error || "Invalid coupon");
+      }
+    } catch {
+      setCouponError("Failed to validate coupon");
+    } finally {
+      setCouponLoading(false);
+    }
   };
 
   const handleSubmitForm = async (e: React.FormEvent) => {
@@ -47,49 +88,19 @@ export function EnrollmentModal({ open, onOpenChange }: EnrollmentModalProps) {
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          couponCode: appliedCoupon?.code || null,
+          discountAmount: appliedCoupon?.discount || 0,
+        }),
       });
 
-      if (!res.ok) throw new Error("Failed to create lead");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to submit");
+      }
 
-      const { order } = await res.json();
-
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: order.currency,
-        name: "BlackBird Academy",
-        description: "Course Enrollment",
-        order_id: order.id,
-        prefill: {
-          name: formData.name,
-          email: formData.email,
-          contact: formData.phone,
-        },
-        handler: async function (response: any) {
-          const verifyRes = await fetch("/api/payments/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            }),
-          });
-
-          if (verifyRes.ok) {
-            window.location.href = "/success";
-          }
-        },
-        modal: {
-          ondismiss: function () {
-            setLoading(false);
-          },
-        },
-      };
-
-      const razorpay = new (window as any).Razorpay(options);
-      razorpay.open();
+      setSubmitted(true);
     } catch (error) {
       console.error("Enrollment error:", error);
       setLoading(false);
@@ -102,6 +113,32 @@ export function EnrollmentModal({ open, onOpenChange }: EnrollmentModalProps) {
     "AI prompt library & viral hooks DB",
     "30-day content planner",
   ];
+
+  if (submitted) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-lg p-8 border-border/60 text-center">
+          <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
+            <Check className="w-8 h-8 text-accent" />
+          </div>
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="display-heading text-2xl">
+              Registration <span className="serif-accent text-accent">Submitted</span>
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-text">
+              Thank you for registering, <span className="text-primary-text font-medium">{formData.name}</span>! We'll reach out to you via WhatsApp with the next steps.
+            </DialogDescription>
+          </DialogHeader>
+          <Button
+            onClick={() => onOpenChange(false)}
+            className="mt-6 font-label uppercase tracking-[0.2em]"
+          >
+            Got it
+          </Button>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -219,6 +256,39 @@ export function EnrollmentModal({ open, onOpenChange }: EnrollmentModalProps) {
             </Select>
           </div>
 
+          <div className="space-y-1.5">
+            <Label className="text-xs font-label uppercase tracking-wider">Coupon Code</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter code"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                className="bg-secondary-bg/50 uppercase flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleApplyCoupon}
+                disabled={couponLoading || !couponCode.trim()}
+                className="shrink-0"
+              >
+                {couponLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Apply"
+                )}
+              </Button>
+            </div>
+            {couponError && (
+              <p className="text-xs text-red-400">{couponError}</p>
+            )}
+            {appliedCoupon && (
+              <p className="text-xs text-accent">
+                Coupon applied! Discounted price: ₹{appliedCoupon.discountedPrice}
+              </p>
+            )}
+          </div>
+
           <Button type="submit" className="w-full font-label uppercase tracking-[0.2em] mt-2" size="lg" disabled={loading}>
             {loading ? (
               <>
@@ -227,14 +297,18 @@ export function EnrollmentModal({ open, onOpenChange }: EnrollmentModalProps) {
               </>
             ) : (
               <>
-                Proceed to Payment <Lock className="ml-2 h-3.5 w-3.5" />
+                Register Now <Lock className="ml-2 h-3.5 w-3.5" />
               </>
             )}
           </Button>
 
           <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-text pt-1">
             <Shield className="w-3 h-3" />
-            <span>Secure payment via Razorpay • 7-day money-back guarantee</span>
+            <span>
+              {appliedCoupon
+                ? `₹${appliedCoupon.discountedPrice} • You save ₹${appliedCoupon.discount}`
+                : "Free registration • Limited seats available"}
+            </span>
           </div>
         </form>
       </DialogContent>

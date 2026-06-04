@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { firestore } from "@/lib/firebase";
+import { Timestamp } from "firebase-admin/firestore";
 
 export async function GET() {
   try {
-    const db = getFirestore();
-    const snapshot = await db.collection("content").get();
+    const snapshot = await firestore.collection("content").get();
     const contentMap: Record<string, string> = {};
 
     snapshot.forEach((doc) => {
@@ -32,8 +32,7 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const { key, value } = body;
 
-    const db = getFirestore();
-    await db.collection("content").doc(key).set(
+    await firestore.collection("content").doc(key).set(
       {
         value,
         type: "text",

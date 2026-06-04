@@ -1,15 +1,36 @@
 import { NextResponse } from "next/server";
-import { getFirestore } from "firebase-admin/firestore";
+import { firestore } from "@/lib/firebase";
 import { Timestamp } from "firebase-admin/firestore";
 
 export async function GET() {
   try {
-    const db = getFirestore();
+    const db = firestore;
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const snapshot = await db.collection("reels").orderBy("createdAt", "desc").get();
-    const reels = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+    const reels = snapshot.docs.map((doc) => {
+      const data = doc.data();
+
+      const inferredResourceType =
+        data.resourceType ||
+        (data.thumbnail?.match(/\.(mp4|webm|mov|avi|mkv)$/i) ? "video" : "image");
+
+      const isVideo = inferredResourceType === "video";
+      const videoUrl = isVideo && data.publicId
+        ? `https://res.cloudinary.com/${cloudName}/video/upload/${data.publicId}.mp4`
+        : "";
+      const videoThumbnail = isVideo && data.publicId
+        ? `https://res.cloudinary.com/${cloudName}/video/upload/${data.publicId}.jpg`
+        : "";
+
+      return {
+        id: doc.id,
+        ...data,
+        resourceType: inferredResourceType,
+        url: data.url || videoUrl,
+        secureUrl: data.secureUrl || videoUrl || data.thumbnail,
+        thumbnail: isVideo ? (data.thumbnail?.match(/\.(jpg|jpeg|png|webp)$/i) ? data.thumbnail : videoThumbnail) : data.thumbnail,
+      };
+    });
 
     return NextResponse.json({ reels });
   } catch (error) {
@@ -21,17 +42,19 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, creator, publicId, url, secureUrl, width, height } = body;
+    const { title, creator, publicId, url, secureUrl, thumbnail, resourceType, width, height } = body;
 
     if (!title || !url) {
       return NextResponse.json({ error: "Title and URL are required" }, { status: 400 });
     }
 
-    const db = getFirestore();
-    const docRef = await db.collection("reels").add({
+    const docRef = await firestore.collection("reels").add({
       title,
       creator: creator || "Student",
-      thumbnail: secureUrl || url,
+      thumbnail: thumbnail || secureUrl || url,
+      url: url || "",
+      secureUrl: secureUrl || "",
+      resourceType: resourceType || (url?.includes(".mp4") ? "video" : "image"),
       publicId: publicId || "",
       width: width || 0,
       height: height || 0,
@@ -57,8 +80,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "ID is required" }, { status: 400 });
     }
 
-    const db = getFirestore();
-    await db.collection("reels").doc(id).delete();
+    await firestore.collection("reels").doc(id).delete();
 
     return NextResponse.json({ success: true });
   } catch (error) {
