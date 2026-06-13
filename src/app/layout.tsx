@@ -207,6 +207,10 @@ export default function RootLayout({
             `,
           }}
         />
+        <script
+          src="https://cdn.jsdelivr.net/npm/@apex/widget"
+          data-project-id="GxqhILVegaqutmcBtYJm"
+        />
       </head>
       <body className="min-h-full flex flex-col bg-background text-primary-text font-sans">
         {children}
